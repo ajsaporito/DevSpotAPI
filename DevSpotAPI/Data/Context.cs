@@ -216,12 +216,16 @@ namespace DevSpotAPI.Data
 			modelBuilder.Entity<Message>()
 				.HasIndex(m => new { m.ChatId, m.CreatedAt });
 
-			// (Optional) these two help inbox lookups a bit
+			// Others
 			modelBuilder.Entity<Chat>().HasIndex(c => c.UserAId);
 			modelBuilder.Entity<Chat>().HasIndex(c => c.UserBId);
 
 			modelBuilder.Entity<Job>().HasIndex(j => j.ClientId);
 			modelBuilder.Entity<Job>().HasIndex(j => j.FreelancerId);
+
+			modelBuilder.Entity<Skill>()
+				.HasIndex(s => s.Name)
+				.IsUnique();
 		}
 	}
 }
