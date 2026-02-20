@@ -5,7 +5,6 @@
         public int JobId { get; set; }
         public string Title { get; set; } = null!;
         public string? Description { get; set; }
-        public string? Category { get; set; }
 
         public string PayType { get; set; } = null!;   // "Hourly" or "Flat"
         public decimal? HourlyRate { get; set; }
@@ -39,6 +38,8 @@
         // Assigned freelancer (null if job is still open)
         public int? FreelancerId { get; set; }
         public string? FreelancerUsername { get; set; }
+        public string? FreelancerFirstName { get; set; }
+        public string? FreelancerLastName { get; set; }
         public string? FreelancerProfilePicUrl { get; set; }
 
         // Total number of proposals submitted for this job.
