@@ -19,6 +19,9 @@
 		public string? Location { get; set; }
 		public bool HasReview { get; set; }
 
+		public JobDuration? Duration { get; set; }
+		public ExperienceLevel? ExperienceLevel { get; set; }
+
 		public decimal? EstHoursWeekly { get; set; }
 		public DateTime? EstCompletionDate { get; set; }
 
@@ -46,5 +49,20 @@
 	{
 		Hourly = 0,
 		Flat = 1
+	}
+
+	public enum JobDuration
+	{
+		LessThanOneMonth = 0,
+		OneToThreeMonths = 1,
+		ThreeToSixMonths = 2,
+		MoreThanSixMonths = 3
+	}
+
+	public enum ExperienceLevel
+	{
+		EntryLevel = 0,
+		Intermediate = 1,
+		Expert = 2
 	}
 }

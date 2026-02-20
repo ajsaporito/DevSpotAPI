@@ -6,7 +6,6 @@
         public int JobId { get; set; }
         public string Title { get; set; } = null!;
         public string? Description { get; set; }
-        public string? Category { get; set; }
 
         public string PayType { get; set; } = null!;   // "Hourly" or "Flat"
         public decimal? HourlyRate { get; set; }
