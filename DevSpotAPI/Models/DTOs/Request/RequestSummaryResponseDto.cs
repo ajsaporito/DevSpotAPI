@@ -8,6 +8,11 @@ namespace DevSpotAPI.Models.DTOs.Request
         public string Status { get; set; } = null!;     // "Pending", "Accepted", "Rejected", "Cancelled"
         public DateTime CreatedAt { get; set; }
 
+        // Job metadata
+        public string? JobTitle { get; set; }
+        public string? JobDuration { get; set; }        // e.g. "1-3 months"
+        public DateTime? JobPostedAt { get; set; }
+
         // Job pay info (client-set, no bidding)
         public string PayType { get; set; } = null!;   // "Hourly" or "Flat"
         public decimal? HourlyRate { get; set; }
