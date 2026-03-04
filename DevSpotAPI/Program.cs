@@ -1,4 +1,5 @@
 ﻿using DevSpotAPI.Data;
+using DevSpotAPI.Hubs;
 using DevSpotAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -79,6 +80,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 		options.IncludeErrorDetails = true;
 		options.Events = new JwtBearerEvents
 		{
+			OnMessageReceived = ctx =>
+			{
+				var accessToken = ctx.Request.Query["access_token"];
+				var path = ctx.HttpContext.Request.Path;
+				if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/chat"))
+				{
+					ctx.Token = accessToken;
+				}
+				return Task.CompletedTask;
+			},
+
 			OnAuthenticationFailed = ctx =>
 			{
 				Console.WriteLine("JWT Authentication FAILED");
@@ -111,6 +123,8 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<PasswordService>();
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<ChatService>();
+builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
 {
@@ -138,5 +152,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

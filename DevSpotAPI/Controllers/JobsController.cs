@@ -218,6 +218,51 @@ namespace DevSpotAPI.Controllers
 			return ToDetail(job);
 		}
 
+		// PUT: api/jobs/{id}/status
+		[Authorize]
+		[HttpPut("{id}/status")]
+		public async Task<IActionResult> UpdateJobStatus(int id, [FromBody] UpdateJobStatusDto dto)
+		{
+			var userId = GetUserId();
+			if (userId == null) return Unauthorized();
+
+			var job = await _ctx.Jobs
+				.Include(j => j.Client)
+				.Include(j => j.JobSkills).ThenInclude(js => js.Skill)
+				.Include(j => j.Requests)
+				.SingleOrDefaultAsync(j => j.JobId == id);
+
+			if (job == null) return NotFound();
+			if (job.ClientId != userId) return Forbid();
+
+			if (!Enum.TryParse<JobStatus>(dto.Status, ignoreCase: true, out var newStatus))
+				return BadRequest("Invalid status value.");
+
+			// Only allow Open, InProgress, Completed
+			if (newStatus != JobStatus.Open && newStatus != JobStatus.InProgress && newStatus != JobStatus.Completed)
+				return BadRequest("Status must be Open, InProgress, or Completed.");
+
+			// Reopening a job: clear freelancer and cancel the previously accepted request
+			if (newStatus == JobStatus.Open)
+			{
+				job.FreelancerId = null;
+
+				var acceptedRequest = await _ctx.Requests
+					.Where(r => r.JobId == id && r.Status == Models.Request.RequestStatus.Accepted)
+					.SingleOrDefaultAsync();
+
+				if (acceptedRequest != null)
+					acceptedRequest.Status = Models.Request.RequestStatus.Cancelled;
+			}
+
+			job.Status = newStatus;
+			job.UpdatedAt = DateTime.UtcNow;
+
+			await _ctx.SaveChangesAsync();
+
+			return Ok(ToSummary(job));
+		}
+
 		// DELETE: api/jobs/{id}
 		[Authorize]
 		[HttpDelete("{id}")]
