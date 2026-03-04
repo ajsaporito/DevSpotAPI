@@ -105,7 +105,8 @@ namespace DevSpotAPI.Controllers
 				AccessToken = token,
 				ExpiresAtUtc = exp,
 				UserId = user.UserId,
-				Username = user.Username
+				Username = user.Username,
+				ProfilePicUrl = user.ProfilePicUrl
 			};
 		}
 
