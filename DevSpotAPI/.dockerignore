@@ -1,6 +1,6 @@
-﻿namespace DevSpotAPI
-{
-    public class _
-    {
-    }
-}
+﻿bin/
+obj/
+.vs/
+.git/
+.gitignore
+docker-compose*
