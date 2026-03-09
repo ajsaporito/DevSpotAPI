@@ -14,108 +14,107 @@ var jwt = builder.Configuration.GetSection("Jwt");
 var key = jwt["Key"];
 
 if (string.IsNullOrWhiteSpace(key))
-	throw new InvalidOperationException("Jwt:Key is missing from configuration.");
+    throw new InvalidOperationException("Jwt:Key is missing from configuration.");
 
 builder.Services.AddControllers()
-	.AddJsonOptions(o =>
-		o.JsonSerializerOptions.ReferenceHandler =
-			System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
+    .AddJsonOptions(o =>
+        o.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
 
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>
 {
-	options.SwaggerDoc("v1", new OpenApiInfo
-	{
-		Title = "DevSpot API",
-		Version = "v1"
-	});
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "DevSpot API",
+        Version = "v1"
+    });
 
-	options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-	{
-		Name = "Authorization",
-		Type = SecuritySchemeType.Http,
-		Scheme = "bearer",        
-		BearerFormat = "JWT",
-		In = ParameterLocation.Header,
-		Description = "a-string-secret-at-least-256-bits-long"
-	});
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter your JWT token like: Bearer {your token}"
+    });
 
-	options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
-	{
-		[new OpenApiSecuritySchemeReference("Bearer", document)] = []
-	});
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+    });
 });
 
 builder.Services.AddDbContext<Context>(options =>
-	options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-	.AddJwtBearer(options =>
-	{
-		options.TokenValidationParameters = new TokenValidationParameters
-		{
-			ValidateIssuer = true,
-			ValidateAudience = true,
-			ValidateLifetime = true,
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
 
-			ValidIssuer = jwt["Issuer"],
-			ValidAudience = jwt["Audience"],
+            ValidIssuer = jwt["Issuer"],
+            ValidAudience = jwt["Audience"],
 
-			IssuerSigningKeys = new[]
-			{
-				new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
-			},
+            IssuerSigningKeys = new[]
+            {
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
+            },
 
-			ValidateIssuerSigningKey = true,
+            ValidateIssuerSigningKey = true,
 
-			ClockSkew = TimeSpan.FromSeconds(30),
-			RequireSignedTokens = true,
-		};
+            ClockSkew = TimeSpan.FromSeconds(30),
+            RequireSignedTokens = true,
+        };
 
-		options.ConfigurationManager = null;
+        options.ConfigurationManager = null;
 
-		options.IncludeErrorDetails = true;
-		options.Events = new JwtBearerEvents
-		{
-			OnMessageReceived = ctx =>
-			{
-				var accessToken = ctx.Request.Query["access_token"];
-				var path = ctx.HttpContext.Request.Path;
-				if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/chat"))
-				{
-					ctx.Token = accessToken;
-				}
-				return Task.CompletedTask;
-			},
+        options.IncludeErrorDetails = true;
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var accessToken = ctx.Request.Query["access_token"];
+                var path = ctx.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/chat"))
+                {
+                    ctx.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            },
 
-			OnAuthenticationFailed = ctx =>
-			{
-				Console.WriteLine("JWT Authentication FAILED");
-				Console.WriteLine("Exception: " + ctx.Exception?.GetType().Name);
-				Console.WriteLine("Message:   " + ctx.Exception?.Message);
-				if (ctx.Exception?.InnerException != null)
-				{
-					Console.WriteLine("Inner:     " + ctx.Exception.InnerException.Message);
-				}
-				// Also very useful:
-				Console.WriteLine("Raw token: " + ctx.Request.Headers["Authorization"]);
-				return Task.CompletedTask;
-			},
+            OnAuthenticationFailed = ctx =>
+            {
+                Console.WriteLine("JWT Authentication FAILED");
+                Console.WriteLine("Exception: " + ctx.Exception?.GetType().Name);
+                Console.WriteLine("Message:   " + ctx.Exception?.Message);
+                if (ctx.Exception?.InnerException != null)
+                {
+                    Console.WriteLine("Inner:     " + ctx.Exception.InnerException.Message);
+                }
+                Console.WriteLine("Raw token: " + ctx.Request.Headers["Authorization"]);
+                return Task.CompletedTask;
+            },
 
-			OnTokenValidated = ctx =>
-			{
-				Console.WriteLine("JWT Token VALIDATED successfully");
-				return Task.CompletedTask;
-			},
+            OnTokenValidated = ctx =>
+            {
+                Console.WriteLine("JWT Token VALIDATED successfully");
+                return Task.CompletedTask;
+            },
 
-			OnChallenge = ctx =>
-			{
-				Console.WriteLine("JWT Challenge triggered - sending 401");
-				return Task.CompletedTask;
-			}
-		};
-	});
+            OnChallenge = ctx =>
+            {
+                Console.WriteLine("JWT Challenge triggered - sending 401");
+                return Task.CompletedTask;
+            }
+        };
+    });
 
 builder.Services.AddAuthorization();
 
@@ -125,21 +124,23 @@ builder.Services.AddScoped<ChatService>();
 builder.Services.AddSignalR();
 
 builder.Services.AddCors(options =>
-{
-	options.AddPolicy("DevCors", p =>
-		p.WithOrigins("http://localhost:5173")
-		 .AllowAnyHeader()
-		 .AllowAnyMethod()
-		 .AllowCredentials());
+{ 
+    options.AddPolicy("DevCors", p =>
+        p.WithOrigins(
+            "http://localhost:5173"
+        // Add deployed frontend URL here later, for example:
+        // ,"https://frontend-name.vercel.app"
+        )
+         .AllowAnyHeader()
+         .AllowAnyMethod()
+         .AllowCredentials());
 });
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-	app.UseSwagger();
-	app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevSpot API v1"));
-}
+// Enable Swagger in all environments so you can test on Render
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "DevSpot API v1"));
 
 app.UseHttpsRedirection();
 
