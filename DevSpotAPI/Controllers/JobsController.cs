@@ -238,9 +238,10 @@ namespace DevSpotAPI.Controllers
 			if (!Enum.TryParse<JobStatus>(dto.Status, ignoreCase: true, out var newStatus))
 				return BadRequest("Invalid status value.");
 
-			// Only allow Open, InProgress, Completed
-			if (newStatus != JobStatus.Open && newStatus != JobStatus.InProgress && newStatus != JobStatus.Completed)
-				return BadRequest("Status must be Open, InProgress, or Completed.");
+			// Only allow Open, InProgress, Completed, Cancelled
+			if (newStatus != JobStatus.Open && newStatus != JobStatus.InProgress &&
+			    newStatus != JobStatus.Completed && newStatus != JobStatus.Cancelled)
+				return BadRequest("Status must be Open, InProgress, Completed, or Cancelled.");
 
 			// Reopening a job: clear freelancer and cancel the previously accepted request
 			if (newStatus == JobStatus.Open)
@@ -275,7 +276,8 @@ namespace DevSpotAPI.Controllers
 			if (job == null) return NotFound();
 			if (job.ClientId != userId) return Forbid();
 
-			_ctx.Jobs.Remove(job);
+			job.Status = JobStatus.Cancelled;
+			job.UpdatedAt = DateTime.UtcNow;
 			await _ctx.SaveChangesAsync();
 
 			return NoContent();

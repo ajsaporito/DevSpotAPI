@@ -58,6 +58,9 @@ namespace DevSpotAPI.Controllers
             [FromQuery] int take = 20)
         {
             var currentUserId = GetCurrentUserId();
+            if (!await _chatService.IsChatMemberAsync(chatId, currentUserId))
+                return Forbid();
+
             var messages = await _chatService.GetMessagesPagedAsync(chatId, currentUserId, before, take);
             return Ok(messages);
         }
@@ -67,6 +70,9 @@ namespace DevSpotAPI.Controllers
         public async Task<ActionResult<MessageResponseDto>> SendMessage(int chatId, [FromBody] SendMessageDto dto)
         {
             var currentUserId = GetCurrentUserId();
+            if (!await _chatService.IsChatMemberAsync(chatId, currentUserId))
+                return Forbid();
+
             var messageDto = await _chatService.SendMessageAsync(chatId, currentUserId, dto.Text);
 
             await _hubContext.Clients.Group($"chat:{chatId}")

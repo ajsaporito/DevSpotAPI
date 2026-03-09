@@ -51,6 +51,19 @@ namespace DevSpotAPI.Controllers
 			await _ctx.SaveChangesAsync();
 
 			var created = await LoadRequest(request.RequestId);
+
+			_ctx.Notifications.Add(new Notification
+			{
+				UserId = job.ClientId,
+				Type = NotificationType.Request,
+				Title = $"{created!.RequestedBy.Username} applied to your job \"{job.Title}\"",
+				JobId = dto.JobId,
+				RequestId = request.RequestId,
+				IsRead = false,
+				CreatedAt = DateTime.UtcNow
+			});
+			await _ctx.SaveChangesAsync();
+
 			return CreatedAtAction(nameof(GetRequest), new { id = request.RequestId }, ToDto(created!));
 		}
 
@@ -169,6 +182,25 @@ namespace DevSpotAPI.Controllers
 			}
 
 			await _ctx.SaveChangesAsync();
+
+			if (newStatus == RequestStatus.Accepted || newStatus == RequestStatus.Rejected)
+			{
+				var title = newStatus == RequestStatus.Accepted
+					? $"Your application for \"{request.Job.Title}\" was accepted"
+					: $"Your application for \"{request.Job.Title}\" was not accepted";
+
+				_ctx.Notifications.Add(new Notification
+				{
+					UserId = request.RequestedById,
+					Type = NotificationType.Request,
+					Title = title,
+					JobId = request.JobId,
+					RequestId = request.RequestId,
+					IsRead = false,
+					CreatedAt = DateTime.UtcNow
+				});
+				await _ctx.SaveChangesAsync();
+			}
 
 			return ToDto(request);
 		}

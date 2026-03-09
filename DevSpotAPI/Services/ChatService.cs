@@ -14,6 +14,12 @@ namespace DevSpotAPI.Services
             _ctx = ctx;
         }
 
+        public async Task<bool> IsChatMemberAsync(int chatId, int userId)
+        {
+            return await _ctx.Chats.AnyAsync(c =>
+                c.ChatId == chatId && (c.UserAId == userId || c.UserBId == userId));
+        }
+
         public async Task<Chat> GetOrCreateChatAsync(int currentUserId, int otherUserId)
         {
             int userAId = Math.Min(currentUserId, otherUserId);
@@ -47,6 +53,18 @@ namespace DevSpotAPI.Services
                 .OrderByDescending(c => c.LastMessageAt)
                 .ToListAsync();
 
+            var chatIds = chats.Select(c => c.ChatId).ToList();
+
+            var unreadCounts = await _ctx.Notifications
+                .Where(n => n.UserId == currentUserId
+                         && n.ChatId.HasValue
+                         && chatIds.Contains(n.ChatId.Value)
+                         && n.Type == NotificationType.Message
+                         && !n.IsRead)
+                .GroupBy(n => n.ChatId!.Value)
+                .Select(g => new { ChatId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ChatId, x => x.Count);
+
             return chats.Select(c =>
             {
                 var other = c.UserAId == currentUserId ? c.UserB : c.UserA;
@@ -61,7 +79,7 @@ namespace DevSpotAPI.Services
                     OtherProfilePicUrl = other.ProfilePicUrl,
                     LastMessage = last?.Text,
                     LastMessageAt = last?.CreatedAt,
-                    UnreadCount = 0
+                    UnreadCount = unreadCounts.GetValueOrDefault(c.ChatId, 0)
                 };
             }).ToList();
         }
@@ -117,6 +135,19 @@ namespace DevSpotAPI.Services
             await _ctx.SaveChangesAsync();
 
             await _ctx.Entry(message).Reference(m => m.Sender).LoadAsync();
+
+            var recipientId = chat.UserAId == senderId ? chat.UserBId : chat.UserAId;
+            _ctx.Notifications.Add(new Notification
+            {
+                UserId = recipientId,
+                ChatId = chatId,
+                MessageId = message.MessageId,
+                Type = NotificationType.Message,
+                Title = $"New message from {message.Sender.Username}",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+            await _ctx.SaveChangesAsync();
 
             return new MessageResponseDto
             {

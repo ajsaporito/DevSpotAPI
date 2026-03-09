@@ -31,6 +31,51 @@ namespace DevSpotAPI.Controllers
 				? dt
 				: DateTime.SpecifyKind(dt, DateTimeKind.Utc);
 
+		// GET: api/users/freelancers
+		[HttpGet("freelancers")]
+		public async Task<ActionResult<List<FreelancerSummaryDto>>> GetFreelancers([FromQuery] string? q)
+		{
+			var query = _ctx.Users
+				.Include(u => u.UserSkills).ThenInclude(us => us.Skill)
+				.Include(u => u.JobsAsFreelancer)
+				.Where(u => u.UserSkills.Any()) // only users with skills = freelancers
+				.AsNoTracking();
+
+			if (!string.IsNullOrWhiteSpace(q))
+			{
+				var term = q.Trim().ToLower();
+				query = query.Where(u =>
+					u.FirstName.ToLower().Contains(term) ||
+					u.LastName.ToLower().Contains(term) ||
+					u.Username.ToLower().Contains(term) ||
+					(u.Bio != null && u.Bio.ToLower().Contains(term)) ||
+					u.UserSkills.Any(us => us.Skill.Name.ToLower().Contains(term))
+				);
+			}
+
+			var users = await query
+				.OrderBy(u => u.FirstName)
+				.ThenBy(u => u.LastName)
+				.ToListAsync();
+
+			return users.Select(ToFreelancerSummary).ToList();
+		}
+
+		// GET: api/users/{userId}/profile
+		[HttpGet("{userId:int}/profile")]
+		public async Task<ActionResult<FreelancerProfileDto>> GetFreelancerProfile(int userId)
+		{
+			var user = await _ctx.Users
+				.Include(u => u.UserSkills).ThenInclude(us => us.Skill)
+				.Include(u => u.JobsAsFreelancer)
+				.AsNoTracking()
+				.SingleOrDefaultAsync(u => u.UserId == userId);
+
+			if (user == null) return NotFound();
+
+			return ToFreelancerProfile(user);
+		}
+
 		// GET: api/users/profile
 		[Authorize]
 		[HttpGet("profile")]
@@ -269,6 +314,82 @@ namespace DevSpotAPI.Controllers
 		{
 			var uidStr = User.FindFirstValue("uid") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
 			return int.TryParse(uidStr, out var id) ? id : null;
+		}
+
+		// -------------------------------------------------------------------------
+		// Freelancer DTO helpers
+		// -------------------------------------------------------------------------
+
+		private static string? BuildLocation(User u)
+		{
+			var parts = new[] { u.LocationCity, u.LocationCountry }
+				.Where(p => !string.IsNullOrWhiteSpace(p));
+			var loc = string.Join(", ", parts);
+			return loc.Length > 0 ? loc : null;
+		}
+
+		private static (int completed, int total, int successRate) ComputeJobStats(User u)
+		{
+			var freelancerJobs = u.JobsAsFreelancer;
+			var completed = freelancerJobs.Count(j => j.Status == JobStatus.Completed);
+			var total = freelancerJobs.Count(j => j.Status == JobStatus.Completed || j.Status == JobStatus.Cancelled);
+			var rate = total > 0 ? (int)Math.Round(100.0 * completed / total) : 0;
+			return (completed, freelancerJobs.Count, rate);
+		}
+
+		private static decimal ComputeTotalEarned(User u)
+		{
+			return u.JobsAsFreelancer
+				.Where(j => j.Status == JobStatus.Completed)
+				.Sum(j => j.FlatAmount ?? j.HourlyRate ?? 0m);
+		}
+
+		private static FreelancerSummaryDto ToFreelancerSummary(User u)
+		{
+			var (_, _, successRate) = ComputeJobStats(u);
+			return new FreelancerSummaryDto
+			{
+				UserId         = u.UserId,
+				Username       = u.Username,
+				FirstName      = u.FirstName,
+				LastName        = u.LastName,
+				Title          = null,       // not yet stored on User
+				Location       = BuildLocation(u),
+				HourlyRate     = null,       // not yet stored on User
+				ProfilePicUrl  = u.ProfilePicUrl,
+				Skills         = u.UserSkills.Select(us => us.Skill.Name).OrderBy(n => n).ToList(),
+				Bio            = u.Bio,
+				JobSuccessRate = successRate,
+				TotalEarned    = ComputeTotalEarned(u),
+				IsVerified     = u.IsVerified,
+				IsTopRated     = false,
+				IsAvailable    = true
+			};
+		}
+
+		private static FreelancerProfileDto ToFreelancerProfile(User u)
+		{
+			var (completed, _, successRate) = ComputeJobStats(u);
+			return new FreelancerProfileDto
+			{
+				UserId              = u.UserId,
+				Username            = u.Username,
+				FirstName           = u.FirstName,
+				LastName             = u.LastName,
+				Title               = null,       // not yet stored on User
+				Location            = BuildLocation(u),
+				HourlyRate          = null,       // not yet stored on User
+				ProfilePicUrl       = u.ProfilePicUrl,
+				Bio                 = u.Bio,
+				Skills              = u.UserSkills.Select(us => us.Skill.Name).OrderBy(n => n).ToList(),
+				IsVerified          = u.IsVerified,
+				IsTopRated          = false,
+				ResponseTime        = null,
+				MemberSince         = u.CreatedAt,
+				TotalJobsCompleted  = completed,
+				TotalHoursWorked    = 0,
+				JobSuccessRate      = successRate
+			};
 		}
 	}
 }

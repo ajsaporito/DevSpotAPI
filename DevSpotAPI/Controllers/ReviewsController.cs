@@ -57,6 +57,19 @@ namespace DevSpotAPI.Controllers
 			_ctx.Reviews.Add(review);
 			await _ctx.SaveChangesAsync();
 
+			_ctx.Notifications.Add(new Notification
+			{
+				UserId = job.FreelancerId!.Value,
+				Type = NotificationType.Review,
+				Title = $"{job.Client.Username} left you a {dto.Rating}-star review for \"{job.Title}\"",
+				JobId = dto.JobId,
+				ReviewId = review.ReviewId,
+				Rating = dto.Rating,
+				IsRead = false,
+				CreatedAt = DateTime.UtcNow
+			});
+			await _ctx.SaveChangesAsync();
+
 			return CreatedAtAction(nameof(GetJobReview), new { jobId = dto.JobId }, ToDto(review, job));
 		}
 
