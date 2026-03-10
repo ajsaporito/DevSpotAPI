@@ -123,14 +123,15 @@ builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<ChatService>();
 builder.Services.AddSignalR();
 
+var allowedOrigins = new List<string> { "http://localhost:5173" };
+var frontendUrl = builder.Configuration["FRONTEND_URL"];
+if (!string.IsNullOrWhiteSpace(frontendUrl))
+    allowedOrigins.Add(frontendUrl.TrimEnd('/'));
+
 builder.Services.AddCors(options =>
-{ 
+{
     options.AddPolicy("DevCors", p =>
-        p.WithOrigins(
-            "http://localhost:5173"
-        // Add deployed frontend URL here later, for example:
-        // ,"https://frontend-name.vercel.app"
-        )
+        p.WithOrigins(allowedOrigins.ToArray())
          .AllowAnyHeader()
          .AllowAnyMethod()
          .AllowCredentials());
